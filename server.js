@@ -3,12 +3,14 @@ require("dotenv").config();
 const cors = require('cors');
 
 const usuarioRouter = require("./routes/usuario.js")
+const catalogoRouter = require("./routes/catalogo.js")
 
 const app = express()
 app.use(cors())
 app.use(express.json())
 
 app.use("/usuario", usuarioRouter)
+app.use("/catalogo", catalogoRouter)
 
 const PORT = process.env.PORT || 3000;
 

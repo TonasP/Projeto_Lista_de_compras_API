@@ -1,11 +1,15 @@
 const express = require("express");
 const pool = require("../db");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken")
 
 const router = express.Router();
 
 router.get("/login", async (req,res)=>{
     const {usuario, senha} = req.body
+    if (!usuario || !senha) {
+        return res.status(400).json({ error: "Informe usuário e senha" });
+    }
     try{
         const result = await pool.query("SELECT * from usuarios where usuario = $1",[usuario])
         if(result.rows.length===0){
@@ -15,9 +19,18 @@ router.get("/login", async (req,res)=>{
         const correctPassword = await bcrypt.compare(senha, user.senha)
 
         if (!correctPassword){
-            return res.status(401).json({mensagem:"A senha está incorreta"})
+            return res.status(401).json({mensagem:"Credenciais inválidas"})
         }
-        res.json({mensagem:"Logado com sucesso"})
+        const token = jwt.sign(
+            {id:user.id, usuario: user.usuario},
+            process.env.JWT_SECRET || "chave_secreta",
+            {expiresIn :"24h"}
+        )
+        res.json({
+            mensagem: "Logado com sucesso",
+            token: token, 
+            usuario: { nome: user.usuario, local: user.localizacao }
+        });
     }
     catch(erro){
         res.status(500).json({
@@ -26,22 +39,10 @@ router.get("/login", async (req,res)=>{
         })
     }
 })
-router.get("/:id", async (req,res)=>{
-    try{
-        const id = parseInt(req.params.id)
-        const result = await pool.query("SELECT * FROM usuarios where id = $1", [id])
-        res.status(200).json(result.rows)
-    }
-    catch(erro){
-        res.status(500).json({
-            error: "Erro ao listar usuário especifico",
-            detalhes: erro.message
-        })
-    }
-})
 router.post("/cadastro", async (req,res)=>{
     const {usuario, localizacao, senha} = req.body
 
+    if(!usuario || !senha) return res.status(400).json({error: "Dados incompletos"});
     try{
         const userCheck = await pool.query("SELECT * FROM usuarios where usuario = $1", [usuario])
         if (userCheck.rows.length>0){
@@ -51,7 +52,7 @@ router.post("/cadastro", async (req,res)=>{
         const saltRounds = 10
         const hash = await bcrypt.hash(senha, saltRounds)
         
-        const newUser = await pool.query(`INSERT INTO public.usuarios(usuario, localizacao, senha)VALUES ($1, $2, $3) RETURNING *`, [usuario, localizacao, hash])
+        const newUser = await pool.query(`INSERT INTO public.usuarios(usuario, localizacao, senha)VALUES ($1, $2, $3) RETURNING id, usuario, localizacao`, [usuario, localizacao, hash])
         res.status(200).json({
             mensagem:"Usuario cadastrado com sucesso",
             usuario:newUser.rows[0]})
