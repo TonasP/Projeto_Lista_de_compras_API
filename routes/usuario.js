@@ -1,17 +1,18 @@
 const express = require("express");
 const pool = require("../db");
 const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken")
+const jwt = require("jsonwebtoken");
+const validator = require('validator');
 
 const router = express.Router();
 
 router.get("/login", async (req,res)=>{
-    const {usuario, senha} = req.body
-    if (!usuario || !senha) {
-        return res.status(400).json({ error: "Informe usuário e senha" });
+    const {usuario, senha, email} = req.body
+    if (!usuario || !senha || !email ) {
+        return res.status(400).json({ error: "Informe usuário/email e senha" });
     }
     try{
-        const result = await pool.query("SELECT * from usuarios where usuario = $1",[usuario])
+        const result = await pool.query("SELECT * from usuarios where usuario = $1 or email = $2",[usuario, email])
         if(result.rows.length===0){
             return res.status(401).json({mensagem:"Credenciais inválidas"})
         }
@@ -40,19 +41,19 @@ router.get("/login", async (req,res)=>{
     }
 })
 router.post("/cadastro", async (req,res)=>{
-    const {usuario, localizacao, senha} = req.body
+    const {usuario, localizacao, senha, email} = req.body
 
     if(!usuario || !senha) return res.status(400).json({error: "Dados incompletos"});
     try{
-        const userCheck = await pool.query("SELECT * FROM usuarios where usuario = $1", [usuario])
+        const userCheck = await pool.query("SELECT * FROM usuarios where usuario = $1 or email = $2", [usuario, email])
         if (userCheck.rows.length>0){
-            return res.status(409).json("Este nome de usuário já está cadastrado")
+            return res.status(409).json("Este nome de usuário ou email já está cadastrado")
         }
         console.log(senha, usuario, localizacao)
         const saltRounds = 10
         const hash = await bcrypt.hash(senha, saltRounds)
         
-        const newUser = await pool.query(`INSERT INTO public.usuarios(usuario, localizacao, senha)VALUES ($1, $2, $3) RETURNING id, usuario, localizacao`, [usuario, localizacao, hash])
+        const newUser = await pool.query(`INSERT INTO public.usuarios(usuario, localizacao, senha, email)VALUES ($1, $2, $3, $4) RETURNING id, usuario, localizacao, email`, [usuario, localizacao, hash, email])
         res.status(200).json({
             mensagem:"Usuario cadastrado com sucesso",
             usuario:newUser.rows[0]})
