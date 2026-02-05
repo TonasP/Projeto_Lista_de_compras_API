@@ -10,7 +10,7 @@ const router = express.Router();
 
 
 
-router.get("/login", async (req,res)=>{
+router.post("/login", async (req,res)=>{
     const {usuario, senha, email} = req.body
     if ( !senha || (!usuario && !email) ) {
         return res.status(400).json({ error: "Informe usuário/email e senha" });
@@ -88,7 +88,7 @@ router.post("/esqueci-senha", async (req, res) => {
         const usuario = userCheck.rows[0];
 
      
-        const token = crypto.randomBytes(20).toString('hex');
+        const token = crypto.randomBytes(6).toString('hex');
         
         
         const agora = new Date();
