@@ -49,6 +49,7 @@ router.get("/:id", verificarToken, async (req, res) => {
 
 router.post("/", verificarToken, async (req, res) => {
     const { nome, categoria } = req.body
+    console.log(nome, categoria)
     try {
         if (!nome || !categoria) {
             return res.status(400).json({ erro: "É necessário preencher todas as informações" })
