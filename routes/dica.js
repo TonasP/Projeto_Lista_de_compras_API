@@ -5,7 +5,7 @@ const verificarToken = require("../middlewares/authToken.js");
 const router = express.Router();
 
 router.get("/", verificarToken, async (req, res) => {
-    const { limit, offset, busca } = req.params
+    const { limit, offset, busca } = req.query
     try {
         let limitSql = parseInt(limit) || 15
         let offsetSql = parseInt(offset) || 0
