@@ -73,16 +73,16 @@ router.get("/", verificarToken, async (req, res) => {
 router.post("/", verificarToken, async (req, res) => {
     const { produto_id, quantidade, comentario } = req.body
     const status = "pendente"
-    if (!comentario){   
-        comentario = ''
-    }
+
+    console.log(req.body)
+    
     let data_atribuicao = new Date()
     if (!produto_id || !quantidade) {
         return res.status(400).json({ erro: "É necessário preencher todas as informações" })
     }
     try {
         const result = await pool.query(`INSERT INTO public.lista(usuario_id, produto_id, quantidade, comentario, status, data_atribuicao)
-	    VALUES ($1, $2, $3, $4, $5, $6) returning *;`, [req.user.id, produto_id, quantidade, status, comentario, data_atribuicao])
+	    VALUES ($1, $2, $3, $4, $5, $6) returning *;`, [req.user.id, produto_id, quantidade,  comentario, status, data_atribuicao])
         res.status(200).json(result.rows[0])
     }
     catch (erro) {

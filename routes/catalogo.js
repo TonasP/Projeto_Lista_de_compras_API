@@ -46,6 +46,23 @@ router.get("/:id", verificarToken, async (req, res) => {
         res.status(500).json({ error: "Erro ao buscar item" });
     }
 });
+router.get("/filtro/:categoria", verificarToken, async (req, res) => {
+    const { categoria } = req.params;
+    try {
+        const result = await pool.query(
+            "SELECT * FROM public.catalogo WHERE categoria = $1 AND usuario_id = $2",
+            [categoria, req.user.id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Item não encontrado" });
+        }
+
+        res.json(result.rows[0]);
+    } catch (error) {
+        res.status(500).json({ error: "Erro ao buscar item" });
+    }
+});
 
 router.post("/", verificarToken, async (req, res) => {
     const { nome, categoria } = req.body
