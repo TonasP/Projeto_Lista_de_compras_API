@@ -6,29 +6,56 @@ const router = express.Router();
 
 
 router.get("/", verificarToken, async (req, res) => {
-    const { limit, offset, busca } = req.query
-    try {
-        const limitSql = parseInt(limit) || 10
-        const offsetSql = parseInt(offset) || 0
+    const { limit, offset, busca } = req.query;
 
+    try {
+        const limitSql = parseInt(limit) || 8;
+        const offsetSql = parseInt(offset) || 0;
         const userId = req.user.id;
 
+        let sqlBase = `SELECT * FROM public.catalogo WHERE usuario_id = $1`;
+
+        let sqlCount = `SELECT COUNT(*) FROM public.catalogo WHERE usuario_id = $1`;
+
+        const params = [userId, limitSql, offsetSql];
+        const paramsCount = [userId];
+
         if (busca) {
-            let result = await pool.query("SELECT * FROM public.catalogo where usuario_id = $1 AND nome ILIKE $4 limit  $2 offset $3", [userId, limitSql, offsetSql, `%${busca}%`])
-            return res.status(200).json(result.rows)
+           
+            sqlBase += ` AND (nome ILIKE $4 OR categoria ILIKE $4)`; 
+            
+        
+            sqlCount += ` AND (nome ILIKE $2 OR categoria ILIKE $2)`;
+
+            const termo = `%${busca}%`;
+            params.push(termo);
+            paramsCount.push(termo);
         }
 
-        let result = await pool.query("SELECT * FROM public.catalogo where usuario_id = $1 limit  $2 offset $3", [userId, limitSql, offsetSql])
+        
+        sqlBase += ` ORDER BY categoria ASC, nome ASC LIMIT $2 OFFSET $3`;
 
-        res.status(200).json(result.rows)
-    }
-    catch (erro) {
+        const [countResult, dadosResult] = await Promise.all([
+            pool.query(sqlCount, paramsCount),
+            pool.query(sqlBase, params)
+        ]);
+
+        const totalItens = parseInt(countResult.rows[0].count);
+
+       
+        res.status(200).json({
+            total: totalItens,
+            itens: dadosResult.rows
+        });
+
+    } catch (erro) {
+        console.error("Erro no GET /catalogo:", erro);
         res.status(500).json({
-            error: "Erro ao consultar o servidor",
+            error: "Erro ao consultar o catálogo",
             detalhes: erro.message
-        })
+        });
     }
-})
+});
 router.get("/:id", verificarToken, async (req, res) => {
     const { id } = req.params;
     try {
