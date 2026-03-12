@@ -6,28 +6,56 @@ const router = express.Router();
 
 router.get("/", verificarToken, async (req, res) => {
     const { limit, offset, busca } = req.query;
+
     try {
-        let limitSql = parseInt(limit) || 15;
-        let offsetSql = parseInt(offset) || 0;
+        const limitSql = parseInt(limit) || 6; 
+        const offsetSql = parseInt(offset) || 0;
+        const userId = req.user.id;
+
+        let sqlBase = `
+            SELECT *
+            FROM public.dicas
+            WHERE usuario_id = $1
+        `;
+
+        let sqlCount = `
+            SELECT COUNT(*) 
+            FROM public.dicas 
+            WHERE usuario_id = $1
+        `;
+
         
+        let params = [userId, limitSql, offsetSql];
+      
+        let paramsCount = [userId];
+
+       
         if (busca) {
-           
-            const result = await pool.query(
-                `SELECT * FROM public.dicas 
-                 WHERE usuario_id = $1 AND (titulo ILIKE $2 OR produto_nome ILIKE $2) 
-                 ORDER BY id ASC LIMIT $3 OFFSET $4`, 
-                [req.user.id, `%${busca}%`, limitSql, offsetSql]
-            );
-            return res.status(200).json(result.rows);
+            
+            sqlBase += ` AND (titulo ILIKE $4 OR produto_nome ILIKE $4)`;
+            
+            sqlCount += ` AND (titulo ILIKE $2 OR produto_nome ILIKE $2)`; 
+
+            params.push(`%${busca}%`);
+            paramsCount.push(`%${busca}%`);
         }
+
         
-        const result = await pool.query(
-            `SELECT * FROM public.dicas WHERE usuario_id = $1 ORDER BY id ASC LIMIT $2 OFFSET $3`, 
-            [req.user.id, limitSql, offsetSql]
-        );
-        return res.status(200).json(result.rows);
+        sqlBase += ` ORDER BY id ASC LIMIT $2 OFFSET $3`;
+
+        const [countResult, dadosResult] = await Promise.all([
+            pool.query(sqlCount, paramsCount),
+            pool.query(sqlBase, params)
+        ]);
+        const totalItens = parseInt(countResult.rows[0].count);
+
+        res.status(200).json({
+            total: totalItens,
+            itens: dadosResult.rows
+        });
 
     } catch (erro) {
+        console.error("Erro no GET /dicas:", erro);
         res.status(500).json({
             error: "Não foi possivel listar as dicas",
             detalhes: erro.message
