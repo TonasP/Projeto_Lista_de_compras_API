@@ -11,6 +11,7 @@ const historicoRouter = require("./routes/historico.js")
 const app = express()
 app.use(cors())
 app.use(express.json())
+app.use('/uploads', express.static('uploads'));
 
 app.use("/usuario", usuarioRouter)
 app.use("/catalogo", catalogoRouter)

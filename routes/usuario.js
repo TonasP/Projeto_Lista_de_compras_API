@@ -5,8 +5,27 @@ const jwt = require("jsonwebtoken");
 const validator = require('validator');
 const crypto = require("crypto");
 const transporter = require('../middlewares/emailTransporter.js')
+const verificarToken = require("../middlewares/authToken.js");
+const multer = require("multer");
+const path = require("path");
 
 const router = express.Router();
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+
+        cb(null, 'uploads/perfil/'); 
+    },
+    filename: function (req, file, cb) {
+        const extensao = path.extname(file.originalname);
+        const nomeUnico = req.user.id + '-' + Date.now() + extensao;
+        cb(null, nomeUnico);
+    }
+});
+
+
+const upload = multer({ storage: storage });
+
 
 
 
@@ -44,6 +63,27 @@ router.post("/login", async (req, res) => {
         })
     }
 })
+
+router.get("/me", verificarToken, async (req, res) => {
+    try {
+        
+        const result = await pool.query(
+            `SELECT nome, email, foto_perfil FROM public.usuarios WHERE id = $1`,
+            [req.user.id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Utilizador não encontrado." });
+        }
+
+        res.status(200).json(result.rows[0]);
+
+    } catch (erro) {
+        console.error("Erro ao buscar dados do utilizador:", erro);
+        res.status(500).json({ error: "Erro interno ao buscar o perfil." });
+    }
+});
+
 router.post("/cadastro", async (req, res) => {
     const { usuario, localizacao, senha, email } = req.body
 
@@ -160,5 +200,30 @@ router.post("/resetar-senha", async (req, res) => {
         res.status(500).json({ error: "Erro ao resetar senha" });
     }
 });
+
+router.post("/upload-foto", verificarToken, upload.single("foto"), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: "Nenhuma imagem foi enviada." });
+        }
+
+        const caminhoFoto = `/uploads/perfil/${req.file.filename}`;
+
+        const result = await pool.query(
+            `UPDATE public.usuarios SET foto_perfil = $1 WHERE id = $2 RETURNING foto_perfil`,
+            [caminhoFoto, req.user.id]
+        );
+
+        res.status(200).json({ 
+            mensagem: "Foto de perfil atualizada com sucesso!",
+            fotoUrl: result.rows[0].foto_perfil 
+        });
+
+    } catch (erro) {
+        console.error("Erro ao salvar foto:", erro);
+        res.status(500).json({ error: "Não foi possível salvar a imagem." });
+    }
+});
+
 
 module.exports = router

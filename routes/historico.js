@@ -5,11 +5,11 @@ const router = express.Router();
 
 // Rota 1: Gráfico Principal (Top Produtos Comprados no Período)
 router.get("/consumo", verificarToken, async (req, res) => {
-    const { tempo } = req.query; // Ex: '1-mes', '6-meses'
+    // Agora pegamos também a 'busca'
+    const { tempo, busca } = req.query; 
     const userId = req.user.id;
 
-    // Lógica para definir o intervalo de tempo no SQL
-    let intervaloSql = "1 month"; // Padrão
+    let intervaloSql = "1 month"; 
     if (tempo === 'hoje') intervaloSql = "1 day";
     else if (tempo === '1-semana') intervaloSql = "1 week";
     else if (tempo === '3-semanas') intervaloSql = "3 weeks";
@@ -18,26 +18,38 @@ router.get("/consumo", verificarToken, async (req, res) => {
     else if (tempo === '1-ano') intervaloSql = "1 year";
 
     try {
-        const query = `
+        // Começamos a montar a query base
+        let query = `
             SELECT catalogo.nome AS produto_nome, COUNT(lista.id) AS total_vezes_comprado
             FROM public.lista
             JOIN public.catalogo ON catalogo.id = lista.produto_id
             WHERE lista.usuario_id = $1 
               AND lista.status = 'comprado' 
               AND lista.data_compra >= NOW() - INTERVAL '${intervaloSql}'
-            GROUP BY catalogo.nome
-            ORDER BY total_vezes_comprado DESC
-            LIMIT 10; -- Mostra os 10 mais comprados para o gráfico não ficar gigante
         `;
         
-        const result = await pool.query(query, [userId]);
+        let params = [userId];
+
+        // Se o usuário digitou algo na busca, adicionamos o ILIKE
+        if (busca) {
+            query += ` AND catalogo.nome ILIKE $2 `;
+            params.push(`%${busca}%`);
+        }
+
+        // Finalizamos a query com o agrupamento e limite
+        query += `
+            GROUP BY catalogo.nome
+            ORDER BY total_vezes_comprado DESC
+            LIMIT 10;
+        `;
+        
+        const result = await pool.query(query, params);
         res.status(200).json(result.rows);
     } catch (erro) {
         console.error("Erro estatísticas:", erro);
         res.status(500).json({ error: "Erro ao gerar dados do gráfico" });
     }
 });
-
 // Rota 2: Detalhamento do Produto Clicado (Somando as quantidades por unidade)
 router.get("/detalhes/:produtoNome", verificarToken, async (req, res) => {
     const { tempo } = req.query;
