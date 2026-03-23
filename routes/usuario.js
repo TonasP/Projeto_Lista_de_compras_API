@@ -68,7 +68,7 @@ router.get("/me", verificarToken, async (req, res) => {
     try {
         
         const result = await pool.query(
-            `SELECT nome, email, foto_perfil FROM public.usuarios WHERE id = $1`,
+            `SELECT usuario, email, foto_perfil FROM public.usuarios WHERE id = $1`,
             [req.user.id]
         );
 
