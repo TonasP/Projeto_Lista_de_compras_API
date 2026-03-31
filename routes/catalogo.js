@@ -93,10 +93,15 @@ router.get("/filtro/:categoria", verificarToken, async (req, res) => {
 
 router.post("/", verificarToken, async (req, res) => {
     const { nome, categoria } = req.body
-    console.log(nome, categoria)
     try {
-        if (!nome || !categoria) {
+        if (nome.trim().length===0 || categoria.trim().length===0) {
             return res.status(400).json({ erro: "É necessário preencher todas as informações" })
+        }
+        const procuraProdutoRepetido = await pool.query("Select nome from public.catalogo where nome = $1 and usuario_id = $2",[nome, req.user.id])
+        if (procuraProdutoRepetido.rows.length > 0){
+            console.log("caiu aqui na validação de repetido")
+            return res.status(400).json({erro: "Produto já existente no catalogo"})
+            
         }
         const result = await pool.query(`INSERT INTO public.catalogo (usuario_id, nome, categoria) VALUES ($1, $2, $3) returning *`, [req.user.id, nome, categoria])
 
@@ -112,7 +117,7 @@ router.put("/:id", verificarToken, async (req, res) => {
     const { nome, categoria } = req.body
     const { id } = req.params
     try {
-        if (!nome || !categoria) {
+        if (nome.trim().length===0 || categoria.trim().length===0) {
             return res.status(400).json({ erro: "É necessário preencher todas as informações" })
         }
         const result = await pool.query(`UPDATE public.catalogo SET nome=$2, categoria=$3 WHERE id = $4 AND usuario_id=$1 returning *`, [req.user.id, nome, categoria, id])
@@ -131,7 +136,6 @@ router.put("/:id", verificarToken, async (req, res) => {
 router.delete("/:id", verificarToken, async (req, res) => {
     const { id } = req.params
     try {
-
         const result = await pool.query(`DELETE FROM public.catalogo WHERE id = $1 AND usuario_id=$2 returning *`, [id, req.user.id])
         if (result.rowCount === 0) {
             return res.status(404).json({ erro: "Item não encontrado ou não autorizado" })

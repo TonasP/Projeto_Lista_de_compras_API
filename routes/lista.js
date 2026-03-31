@@ -73,7 +73,7 @@ router.get("/", verificarToken, async (req, res) => {
 router.post("/", verificarToken, async (req, res) => {
     const { produto_id, quantidade, comentario } = req.body
     const status = "pendente"
-
+    
     console.log(req.body)
     
     let data_atribuicao = new Date()
@@ -94,17 +94,18 @@ router.post("/", verificarToken, async (req, res) => {
 
 })
 router.put("/:id", verificarToken, async(req,res)=>{
-    const { quantidade, status, comentario, data_compra} = req.body
-    if (!comentario){   
+    const { quantidade, comentario} = req.body
+    console.log (quantidade, comentario)
+    if (comentario.trim().length===0){   
         comentario = ''
     }
-    if (!quantidade || !status || !data_compra ){
-        return res.status(400).json({erro: "É necessário preencher todas as informações"})
+    if (quantidade.trim().length===0){
+        return res.status(400).json({erro: "É necessário preencher a quantidade"})
     }
     try {
         const result = await pool.query(`UPDATE public.lista
-	SET quantidade=$1, status=$2, data_compra=$3, comentario=$6
-	WHERE id = $4 and usuario_id = $5 returning *`,[quantidade, status, data_compra, req.params.id, req.user.id, comentario])
+	SET quantidade=$1, comentario=$2
+	WHERE id = $3 and usuario_id = $4 returning *`,[quantidade, comentario,  req.params.id, req.user.id,])
     return res.status(200).json(result.rows[0])
     }
     catch(erro){
