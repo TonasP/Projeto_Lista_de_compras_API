@@ -86,6 +86,7 @@ router.get("/me", verificarToken, async (req, res) => {
 
 router.post("/cadastro", async (req, res) => {
     const { usuario, localizacao, senha, email } = req.body
+    console.log (usuario, localizacao, senha, email )
 
     if (!usuario || !senha) return res.status(400).json({ error: "Dados incompletos" });
     try {
