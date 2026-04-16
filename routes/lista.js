@@ -94,7 +94,7 @@ router.post("/", verificarToken, async (req, res) => {
 
 })
 router.put("/:id", verificarToken, async(req,res)=>{
-    const { quantidade, comentario} = req.body
+    let { quantidade, comentario} = req.body
     console.log (quantidade, comentario)
     if (comentario.trim().length===0){   
         comentario = ''
