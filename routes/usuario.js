@@ -174,8 +174,19 @@ router.post("/esqueci-senha", async (req, res) => {
         await transporter.sendMail({
             to: email,
             from: 'no-reply@seuapp.com',
-            subject: 'Recuperação de Senha',
-            text: `Você esqueceu sua senha? Use este token: ${token}\n\nOu clique no link: http://localhost:3000/resetar-senha/${token}`
+            subject: 'Vamos recuperar seu acesso? 🗝️',
+            text: `Olá!
+
+Parece que sua senha resolveu tirar um dia de folga. Não se preocupe, acontece com os melhores de nós!
+
+Para voltar a aproveitar tudo o que preparamos para você, utilize o código de verificação abaixo:
+
+    ${token}
+
+Basta inserir esse token na página de recuperação e escolher uma nova senha. Por segurança, lembre-se: este código é de uso único e expira em breve.
+
+Até logo,
+Equipe Stock`
         });
 
         return res.status(200).json({ message: "Se o email existir, você receberá um link de redefinição." });
