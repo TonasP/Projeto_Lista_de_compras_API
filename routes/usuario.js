@@ -95,8 +95,8 @@ router.post("/cadastro", async (req, res) => {
         // Log 2: Verificando se o usuário ou email já existem
         console.log("2. Verificando duplicidade...");
         const userCheck = await pool.query(
-            "SELECT id FROM usuarios WHERE usuario = $1 OR (email IS NOT NULL AND email = $2)", 
-            [usuario, email || null]
+            "SELECT id FROM usuarios WHERE (email IS NOT NULL AND email = $2)", 
+            [email || null]
         );
 
         if (userCheck.rows.length > 0) {
