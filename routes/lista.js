@@ -93,28 +93,52 @@ router.post("/", verificarToken, async (req, res) => {
     }
 
 })
-router.put("/:id", verificarToken, async(req,res)=>{
-    let { quantidade, comentario} = req.body
-    console.log (quantidade, comentario)
-    if (comentario.trim().length===0){   
-        comentario = ''
+router.put("/:id", verificarToken, async (req, res) => {
+    // Agora capturamos também o status e a data_compra vindos do app
+    let { quantidade, comentario, status, data_compra } = req.body;
+    
+    // Validações básicas que você já tinha
+    if (comentario === undefined || comentario === null) {
+        comentario = '';
     }
-    if (quantidade.trim().length===0){
-        return res.status(400).json({erro: "É necessário preencher a quantidade"})
+    if (!quantidade || quantidade.trim().length === 0) {
+        return res.status(400).json({ erro: "É necessário preencher a quantidade" });
     }
+
     try {
-        const result = await pool.query(`UPDATE public.lista
-	SET quantidade=$1, comentario=$2
-	WHERE id = $3 and usuario_id = $4 returning *`,[quantidade, comentario,  req.params.id, req.user.id,])
-    return res.status(200).json(result.rows[0])
-    }
-    catch(erro){
+        let result;
+
+        // Lógica inteligente: Se houver status e data, atualiza a compra. 
+        // Caso contrário, faz apenas a edição normal de texto/quantidade.
+        if (status && data_compra) {
+            result = await pool.query(
+                `UPDATE public.lista 
+                 SET quantidade = $1, comentario = $2, status = $3, data_compra = $4 
+                 WHERE id = $5 AND usuario_id = $6 RETURNING *`,
+                [quantidade, comentario, status, data_compra, req.params.id, req.user.id]
+            );
+        } else {
+            result = await pool.query(
+                `UPDATE public.lista 
+                 SET quantidade = $1, comentario = $2 
+                 WHERE id = $3 AND usuario_id = $4 RETURNING *`,
+                [quantidade, comentario, req.params.id, req.user.id]
+            );
+        }
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ erro: "Item não encontrado ou sem permissão" });
+        }
+
+        return res.status(200).json(result.rows[0]);
+    } catch (erro) {
+        console.error("Erro no Update:", erro.message);
         res.status(500).json({
-            error: "Não foi possivel atualizar o produto selecionado",
+            error: "Não foi possível atualizar o produto selecionado",
             detalhes: erro.message
-        })
+        });
     }
-})
+});
 router.delete("/:id", verificarToken, async(req,res)=>{
     try{
         const result = await pool.query(`DELETE FROM public.lista
