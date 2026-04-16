@@ -85,53 +85,56 @@ router.get("/me", verificarToken, async (req, res) => {
 });
 
 router.post("/cadastro", async (req, res) => {
-    // Pegamos os dados e garantimos que o email e localizacao sejam null caso não venham
     const { usuario, localizacao, senha, email } = req.body;
+    
+    console.log("1. Tentando cadastrar:", usuario);
 
-    // Log para depuração (veja isso no log do Render ao testar)
-    console.log("Dados recebidos:", { usuario, localizacao, senha, email });
-
-    if (!usuario || !senha) {
-        return res.status(400).json({ error: "Usuário e senha são obrigatórios" });
-    }
+    if (!usuario || !senha) return res.status(400).json({ error: "Dados incompletos" });
 
     try {
-        // 1. Verificação de duplicidade: note o tratamento para o email
-        // Se o email vier vazio, buscamos apenas pelo usuário
+        // Log 2: Verificando se o usuário ou email já existem
+        console.log("2. Verificando duplicidade...");
         const userCheck = await pool.query(
-            "SELECT * FROM usuarios WHERE usuario = $1 OR (email IS NOT NULL AND email = $2)", 
+            "SELECT id FROM usuarios WHERE usuario = $1 OR (email IS NOT NULL AND email = $2)", 
             [usuario, email || null]
         );
 
         if (userCheck.rows.length > 0) {
-            return res.status(409).json({ error: "Usuário ou email já cadastrado" });
+            console.log("-> Usuário ou email já existe.");
+            return res.status(409).json({ error: "Este nome de usuário ou email já está cadastrado" });
         }
 
+        // Log 3: Gerando o Hash (Ponto comum de erro)
+        console.log("3. Gerando hash da senha...");
         const saltRounds = 10;
         const hash = await bcrypt.hash(senha, saltRounds);
 
-        // 2. Inserção: enviamos null explicitamente se o campo estiver vazio
-        const newUser = await pool.query(
-            `INSERT INTO public.usuarios (usuario, localizacao, senha, email) 
-             VALUES ($1, $2, $3, $4) 
-             RETURNING id, usuario, localizacao, email`, 
-            [
-                usuario, 
-                localizacao || null, 
-                hash, 
-                email || null
-            ]
-        );
+        // Log 4: Inserindo no banco
+        console.log("4. Inserindo no banco de dados...");
+        const querySQL = `
+            INSERT INTO public.usuarios (usuario, localizacao, senha, email) 
+            VALUES ($1, $2, $3, $4) 
+            RETURNING id, usuario, localizacao, email
+        `;
+        const values = [usuario, localizacao || null, hash, email || null];
 
-        res.status(201).json({
-            mensagem: "Usuário cadastrado com sucesso",
+        const newUser = await pool.query(querySQL, values);
+        
+        console.log("5. Sucesso! ID gerado:", newUser.rows[0].id);
+
+        return res.status(201).json({
+            mensagem: "Usuario cadastrado com sucesso",
             usuario: newUser.rows[0]
         });
 
     } catch (erro) {
-        console.error("Erro no Banco:", erro.message);
-        res.status(500).json({
-            error: "Erro ao cadastrar usuário",
+        // Esse log vai te dizer EXATAMENTE o que o banco respondeu (ex: coluna faltando, erro de tipo, etc)
+        console.error("--- ERRO NO PROCESSO DE CADASTRO ---");
+        console.error("Mensagem:", erro.message);
+        console.error("Stack:", erro.stack);
+        
+        return res.status(500).json({
+            error: "Erro interno ao cadastrar",
             detalhes: erro.message
         });
     }
