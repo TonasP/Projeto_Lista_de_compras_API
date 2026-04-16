@@ -85,32 +85,57 @@ router.get("/me", verificarToken, async (req, res) => {
 });
 
 router.post("/cadastro", async (req, res) => {
-    const { usuario, localizacao, senha, email } = req.body
-    console.log (usuario, localizacao, senha, email )
+    // Pegamos os dados e garantimos que o email e localizacao sejam null caso não venham
+    const { usuario, localizacao, senha, email } = req.body;
 
-    if (!usuario || !senha) return res.status(400).json({ error: "Dados incompletos" });
-    try {
-        const userCheck = await pool.query("SELECT * FROM usuarios where usuario = $1 or email = $2", [usuario, email])
-        if (userCheck.rows.length > 0) {
-            return res.status(409).json("Este nome de usuário ou email já está cadastrado")
-        }
-        console.log(senha, usuario, localizacao)
-        const saltRounds = 10
-        const hash = await bcrypt.hash(senha, saltRounds)
+    // Log para depuração (veja isso no log do Render ao testar)
+    console.log("Dados recebidos:", { usuario, localizacao, senha, email });
 
-        const newUser = await pool.query(`INSERT INTO public.usuarios(usuario, localizacao, senha, email)VALUES ($1, $2, $3, $4) RETURNING id, usuario, localizacao, email`, [usuario, localizacao, hash, email])
-        res.status(200).json({
-            mensagem: "Usuario cadastrado com sucesso",
-            usuario: newUser.rows[0]
-        })
+    if (!usuario || !senha) {
+        return res.status(400).json({ error: "Usuário e senha são obrigatórios" });
     }
-    catch (erro) {
+
+    try {
+        // 1. Verificação de duplicidade: note o tratamento para o email
+        // Se o email vier vazio, buscamos apenas pelo usuário
+        const userCheck = await pool.query(
+            "SELECT * FROM usuarios WHERE usuario = $1 OR (email IS NOT NULL AND email = $2)", 
+            [usuario, email || null]
+        );
+
+        if (userCheck.rows.length > 0) {
+            return res.status(409).json({ error: "Usuário ou email já cadastrado" });
+        }
+
+        const saltRounds = 10;
+        const hash = await bcrypt.hash(senha, saltRounds);
+
+        // 2. Inserção: enviamos null explicitamente se o campo estiver vazio
+        const newUser = await pool.query(
+            `INSERT INTO public.usuarios (usuario, localizacao, senha, email) 
+             VALUES ($1, $2, $3, $4) 
+             RETURNING id, usuario, localizacao, email`, 
+            [
+                usuario, 
+                localizacao || null, 
+                hash, 
+                email || null
+            ]
+        );
+
+        res.status(201).json({
+            mensagem: "Usuário cadastrado com sucesso",
+            usuario: newUser.rows[0]
+        });
+
+    } catch (erro) {
+        console.error("Erro no Banco:", erro.message);
         res.status(500).json({
             error: "Erro ao cadastrar usuário",
             detalhes: erro.message
-        })
+        });
     }
-})
+});
 router.post("/esqueci-senha", async (req, res) => {
     const { email } = req.body;
 
