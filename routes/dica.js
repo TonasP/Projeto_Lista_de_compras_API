@@ -83,28 +83,34 @@ router.get("/:id", verificarToken, async (req, res) => {
 });
 
 router.post("/", verificarToken, async (req, res) => {
-  
     const { titulo, descricao, produto_nome } = req.body;
+    
     try {
         if (!titulo || !descricao || !produto_nome) {
-            return res.status(400).json("É necessário preencher todos os dados");
+            
+            return res.status(400).json({ erro: "É necessário preencher todos os dados" });
         }
-        
         
         const result = await pool.query(
             `INSERT INTO public.dicas (usuario_id, titulo, descricao, produto_nome)
              VALUES ($1, $2, $3, $4) RETURNING *`, 
-            [req.user.id, titulo, descricao, produto_nome]
+            [req.user.id, titulo, descricao, produto_nome] 
         );
         
         if (result.rows.length === 0) {
-            return res.status(404).json("Impossivel acessar o item");
+            
+            return res.status(404).json({ erro: "Impossível acessar o item criado" });
         }
+        
         return res.status(200).json(result.rows[0]);
+
     } catch (erro) {
+        
+        console.error("ERRO FATAL NO BANCO (POST /DICAS):", erro.message); 
+        
         res.status(500).json({
-            error: "Não foi possivel adicionar a dica",
-            message: erro.message
+            erro: "Não foi possivel adicionar a dica", 
+            detalhes: erro.message
         });
     }
 });
