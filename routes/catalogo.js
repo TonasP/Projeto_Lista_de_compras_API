@@ -56,6 +56,42 @@ router.get("/", verificarToken, async (req, res) => {
         });
     }
 });
+
+
+router.post("/", verificarToken, async (req, res) => {
+    const { nome, categoria } = req.body; 
+
+    if (!nome || nome.trim() === '') {
+        return res.status(400).json({ erro: "O nome do item é obrigatório." });
+    }
+
+    try {
+        
+        const checkDuplicado = await pool.query(
+            `SELECT id FROM public.catalogo 
+             WHERE LOWER(nome) = LOWER($1) AND usuario_id = $2`,
+            [nome.trim(), req.user.id]
+        );
+
+        
+        if (checkDuplicado.rows.length > 0) {
+            return res.status(409).json({ erro: "Este item já existe no seu catálogo." });
+        }
+
+        
+        const result = await pool.query(
+            `INSERT INTO public.catalogo (nome, categoria, usuario_id) 
+             VALUES ($1, $2, $3) RETURNING *`,
+            [nome.trim(), categoria || 'Sem categoria', req.user.id]
+        );
+
+        return res.status(201).json(result.rows[0]);
+
+    } catch (erro) {
+        console.error("Erro ao adicionar no catálogo:", erro.message);
+        return res.status(500).json({ erro: "Erro interno no servidor." });
+    }
+});
 router.get("/:id", verificarToken, async (req, res) => {
     const { id } = req.params;
     try {
