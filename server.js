@@ -20,6 +20,11 @@ app.use("/lista", listaRouter)
 app.use("/dicas", dicasRouter)
 app.use("/historico", historicoRouter)
 
+//rota de ping para manter o servidor ativo
+app.use("/ping", (res,req)=>{
+    res.status(200).json("Servidor pingado com sucesso")
+})
+
 
 const PORT = process.env.PORT || 3000;
 
