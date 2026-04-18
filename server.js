@@ -21,7 +21,7 @@ app.use("/dicas", dicasRouter)
 app.use("/historico", historicoRouter)
 
 //rota de ping para manter o servidor ativo
-app.use("/ping", (res,req)=>{
+app.use("/ping", (req,res)=>{
     res.status(200).json({message:"Servidor pingado com sucesso"})
 })
 
