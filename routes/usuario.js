@@ -51,8 +51,9 @@ router.post("/login", async (req, res) => {
             { expiresIn: "24h" }
         )
         res.json({
-            mensagem: "Logado com sucesso"
-            
+            mensagem: "Logado com sucesso",
+            token: token,
+            usuario: { nome: user.usuario, local: user.localizacao, email: user.email }
         });
     }
     catch (erro) {
